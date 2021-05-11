@@ -97,7 +97,7 @@ extern "C" {
       delete reinterpret_cast<Expertise*>(ptr);
     }
     
-    void Fit(void *ptr, float *data_ptr, float *weight_ptr, bool *target_ptr, unsigned int nEvents, unsigned int nFeatures) {
+    void Fit(void *ptr, float *data_ptr, float *weight_ptr, unsigned int *target_ptr, unsigned int nEvents, unsigned int nFeatures) {
       Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
 
       std::vector<float> w;
@@ -106,7 +106,7 @@ extern "C" {
       else
         w = std::vector<float>(nEvents, 1.0);
 
-      std::vector<bool> y(target_ptr, target_ptr + nEvents);
+      std::vector<unsigned int> y(target_ptr, target_ptr + nEvents);
       std::vector<std::vector<float>> X(nFeatures);
       for(unsigned int iFeature = 0; iFeature < nFeatures; ++iFeature) {
         std::vector<float> temp(nEvents);
@@ -130,16 +130,16 @@ extern "C" {
       expertise->classifier = FastBDT::Classifier(file);
     }
 
-    float Predict(void *ptr, float *array) {
+    double Predict(void *ptr, float *array) {
       Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
-      return expertise->classifier.predict(std::vector<float>(array, array + expertise->classifier.GetNFeatures()));
+      return expertise->classifier.predict(std::vector<double>(array, array + expertise->classifier.GetNFeatures()));
     }
     
-    void PredictArray(void *ptr, float *array, float *result, unsigned int nEvents) {
+    void PredictArray(void *ptr, float *array, double *result, unsigned int nEvents) {
       Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
       unsigned int nFeatures = expertise->classifier.GetNFeatures();
       for(unsigned int iEvent = 0; iEvent < nEvents; ++iEvent) {
-        result[iEvent] = expertise->classifier.predict(std::vector<float>(array + iEvent*nFeatures, array + (iEvent+1)*nFeatures));
+        result[iEvent] = expertise->classifier.predict(std::vector<double>(array + iEvent*nFeatures, array + (iEvent+1)*nFeatures));
       }
     }
 

@@ -54,6 +54,50 @@ namespace FastBDT {
       throw std::runtime_error("Number of data-points X doesn't match the numbers of weights w");
     }
 
+
+    // derive the number of classes
+    std::unordered_set<unsigned int> yHashMap;
+    std::map<unsigned int, unsigned int> classLabelToIndex;
+    std::map<unsigned int, unsigned int> classIndexToLabel;
+
+    // O(n)
+    m_nClasses = 0; // use as counter and to then store the total number of classes
+    std::vector<unsigned int> nEventsPerClass = {};
+    std::vector<unsigned int> yClass(y.size(), 0);
+
+    for (unsigned int iY = 0; iY < y.size(); ++iY) {
+      if (yHashMap.find(y[iY]) == yHashMap.end()) {
+        yHashMap.insert(y[iY]);
+        classLabelToIndex[y[iY]] = m_nClasses;
+        classIndexToLabel[m_nClasses] = y[iY];
+        nEventsPerClass.push_back(1);
+        m_nClasses++;
+      }
+      else {
+        nEventsPerClass[classLabelToIndex[y[iY]]]++;
+      }
+      yClass[iY] = classLabelToIndex[y[iY]];
+    }
+    
+    delete &yHashMap;
+
+    std::vector<unsigned int> startingIndexPerClass(nEventsPerClass.size(), 0);
+    std::partial_sum(nEventsPerClass.begin(), nEventsPerClass.end(), startingIndexPerClass.begin()+1, std::plus<unsigned int>());
+  
+    bool anyPurityTransforms = std::any_of(m_purityTransformation.begin(), m_purityTransformation.end(), [](bool i){return i;});
+    std::vector<bool> yBool;
+
+    if (anyPurityTransforms) {
+      if (m_nClasses != 2) {
+        throw std::runtime_error("Purity transforms are currently only supported for binary classification. Not multiclass.");
+      }
+      //assumes signal class has index 0;
+      yBool.resize(yClass.size());
+      for (unsigned int iY = 0; iY < yClass.size(); ++iY) {
+        yBool[iY] = yClass[iY] == 0;
+      }
+    }
+
     m_numberOfFinalFeatures = m_numberOfFeatures;
     for(unsigned int iFeature = 0; iFeature < m_numberOfFeatures; ++iFeature) {
       auto feature = X[iFeature];
@@ -64,7 +108,7 @@ namespace FastBDT {
         for(unsigned int iEvent = 0; iEvent < numberOfEvents; ++iEvent) {
           feature[iEvent] = m_featureBinning[iFeature].ValueToBin(X[iFeature][iEvent]);
         }
-        m_purityBinning.push_back(PurityTransformation(m_binning[iFeature], feature, w, y));
+        m_purityBinning.push_back(PurityTransformation(m_binning[iFeature], feature, w, yBool));
         m_binning.insert(m_binning.begin() + iFeature + 1, m_binning[iFeature]);
       }
     }
@@ -74,33 +118,6 @@ namespace FastBDT {
       m_featureBinning.push_back(FeatureBinning<float>(m_binning[iFeature + m_numberOfFinalFeatures], feature));
     }
     
-    // derive the number of classes
-    std::unordered_set<unsigned int> yHashMap;
-    std::map<unsigned int, unsigned int> classLabelToIndex;
-    std::map<unsigned int, unsigned int> classIndexToLabel;
-
-    // O(n)
-    m_nClasses = 0; // use as counter and to then store the total number of classes
-    std::vector<unsigned int> nEventsPerClass = {};
-
-    for (auto yVal : y) {
-      if (yHashMap.find(yVal) == yHashMap.end()) {
-        yHashMap.insert(yVal);
-        classLabelToIndex[yVal] = m_nClasses;
-        classIndexToLabel[m_nClasses] = yVal;
-        nEventsPerClass.push_back(1);
-        m_nClasses++;
-      }
-      else {
-        nEventsPerClass[classLabelToIndex[yVal]]++;
-      }
-    }
-    
-    delete &yHashMap;
-
-    std::vector<unsigned int> startingIndexPerClass(nEventsPerClass.size(), 0);
-    std::partial_sum(nEventsPerClass.begin(), nEventsPerClass.end(), startingIndexPerClass.begin()+1, std::plus<unsigned int>());
-  
     EventSample eventSample(numberOfEvents, m_nClasses, nEventsPerClass, startingIndexPerClass, m_numberOfFinalFeatures, m_numberOfFlatnessFeatures, m_binning);
     std::vector<unsigned int> bins(m_numberOfFinalFeatures+m_numberOfFlatnessFeatures);
 
@@ -127,13 +144,13 @@ namespace FastBDT {
 
     ForestBuilder df(eventSample, m_nTrees, m_shrinkage, m_subsample, m_depth, m_sPlot, m_flatnessLoss, m_nClasses);
     if(m_can_use_fast_forest) {
-        Forest<float> temp_forest( df.GetShrinkage(), df.GetF0(), m_transform2probability);
+        Forest<float> temp_forest( df.GetShrinkage(), df.GetF0(), m_transform2probability, m_nClasses);
         for( auto t : df.GetForest() ) {
            temp_forest.AddTree(removeFeatureBinningTransformationFromTree(t, m_featureBinning));
         }
         m_fast_forest = temp_forest;
     } else {
-        Forest<unsigned int> temp_forest(df.GetShrinkage(), df.GetF0(), m_transform2probability);
+        Forest<unsigned int> temp_forest(df.GetShrinkage(), df.GetF0(), m_transform2probability, m_nClasses);
         for( auto t : df.GetForest() ) {
            temp_forest.AddTree(t);
         }
@@ -150,7 +167,7 @@ namespace FastBDT {
 
   }
       
-  float Classifier::predict(const std::vector<float> &X) const {
+  std::vector<double> Classifier::predict(const std::vector<float> &X) const {
 
       if(m_can_use_fast_forest) {
         return m_fast_forest.Analyse(X);

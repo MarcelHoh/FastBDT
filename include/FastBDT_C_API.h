@@ -45,13 +45,13 @@ extern "C" {
     
     void Delete(void *ptr);
     
-    void Fit(void *ptr, float *data_ptr, float *weight_ptr, bool *target_ptr, unsigned int nEvents, unsigned int nFeatures);
+    void Fit(void *ptr, float *data_ptr, float *weight_ptr, unsigned int *target_ptr, unsigned int nEvents, unsigned int nFeatures);
 
     void Load(void* ptr, char *weightfile);
 
-    float Predict(void *ptr, float *array);
+    double Predict(void *ptr, float *array);
 
-    void PredictArray(void *ptr, float *array, float *result, unsigned int nEvents);
+    void PredictArray(void *ptr, float *array, double *result, unsigned int nEvents);
 
     void Save(void* ptr, char *weightfile);
     

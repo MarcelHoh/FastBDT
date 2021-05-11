@@ -16,6 +16,7 @@
 #include <map>
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 
 namespace FastBDT {
 
@@ -1014,13 +1015,14 @@ namespace FastBDT {
       Forest(const Forest&) = default;
       Forest& operator=(const Forest &) = default;
 
-      Forest(double shrinkage, double F0, bool transform2probability) : shrinkage(shrinkage), F0(F0), transform2probability(transform2probability) { F0_div_shrink = F0 / shrinkage; }
+      Forest(double shrinkage, double F0, bool transform2probability, unsigned int nClasses) : shrinkage(shrinkage), F0(F0), transform2probability(transform2probability), nClasses(nClasses) { F0_div_shrink = F0 / shrinkage; }
 
       void AddTree(const Tree<T> &tree) { forest.push_back(tree); }
       const std::vector<Tree<T>>& GetForest() const { return forest; }
       double GetF0() const { return F0; }
       double GetShrinkage() const { return shrinkage; }
       bool GetTransform2Probability() const { return transform2probability; }
+      unsigned int GetNClasses() const {return nClasses;}
 
       /**
        * Returns the F value calculated from the DecisionForest for a given event.
@@ -1042,17 +1044,74 @@ namespace FastBDT {
       /**
        * Returns the signal probability of a given event
        * @param values the feature values of the event in an arbitrary iterator supporting operator[]
+       * TODO find away to avoid returning a vector of size 1.
        */
       template<class Iterator>
-      double Analyse(const Iterator &values) const {
+      std::vector<double> Analyse(const Iterator &values) const {
 
           if(not transform2probability)
-              return GetF(values);
+              return std::vector<double> {GetF(values)};
           // Calculate signal probability out of the F value
-          return 1.0/(1.0+std::exp(-2*GetF(values)));
+          return std::vector<double> {1.0/(1.0+std::exp(-2*GetF(values)))};
 
       }
       
+
+      /**
+       * Returns the F value calculated from the DecisionForest for a given event.
+       * The F value can be used to calculate the signal probability or the weight
+       * of the event in the next boosted training.
+       * @param values the feature values of the event in an arbitrary iterator supporting operator[]
+       */
+      template<class Iterator>
+      std::vector<double> GetFMulticlass(const Iterator &values) const {
+
+          // Determines the F value by looping over all trees and
+          // summing up the weights of the nodes the event belongs to.
+
+          // TODO - consider if the trees that are not aimed at the class provide
+          // anything of value or if we can just take every nth tree
+          std::vector<double> F(nClasses, F0_div_shrink);
+          unsigned int iClass = 0U;
+
+          for(unsigned int iTree = 0; iTree < forest.size(); ++iTree) { 
+            F[iClass] += forest[iTree].GetBoostWeight( forest[iTree].ValueToNode(values) );
+            ++iClass;
+            if (iClass == nClasses) iClass = 0; // modulo
+          }
+          double _shrinkage = shrinkage;
+          std::transform(F.begin(), F.end(), F.begin(), [&_shrinkage](double c){return c * _shrinkage;});
+          return F;
+      }
+
+      /**
+       * Returns the signal probability of a given event
+       * @param values the feature values of the event in an arbitrary iterator supporting operator[]
+       */
+      template<class Iterator>
+      std::vector<double> AnalyseMulticlass(const Iterator &values) const {
+
+          if(not transform2probability)
+              return GetFMulticlass(values);
+
+          // Calculate signal probability out of the F value
+          // follow the way TMVA does it for now 
+          // https://github.com/root-project/root/blob/master/tmva/tmva/src/MethodBDT.cxx#L2495
+          // TODO - think if this can be better
+          // return 1.0/(1.0+std::exp(-2*GetF(values)));
+
+          std::vector<double> fvals = GetFMulticlass(values);
+          std::transform(fvals.begin(), fvals.end(), fvals.begin(), [](double d){return std::exp(d);});
+          double expSum = std::accumulate(fvals.begin(), fvals.end(), 0.0);
+          std::vector<double> pvals(fvals.size(), 0.0);
+          std::transform(fvals.begin(), fvals.end(), pvals.begin(), [&expSum](double f){return f / expSum;});
+          return pvals;
+      }
+
+
+
+      
+
       /**
        * Calculates importance ranking of variables, based on the total separation gain along the path of the event
        */
@@ -1116,6 +1175,7 @@ namespace FastBDT {
       double F0_div_shrink = 0.0;
       std::vector<Tree<T>> forest;
       bool transform2probability = false;
+      unsigned int nClasses = 0;
 
   };
   

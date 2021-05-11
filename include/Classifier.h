@@ -91,7 +91,7 @@ class Classifier {
 			
       void fit(const std::vector<std::vector<float>> &X, const std::vector<unsigned int> &y, const std::vector<Weight> &w);
 
-      float predict(const std::vector<float> &X) const;
+      std::vector<double> predict(const std::vector<float> &X) const;
       
       std::map<unsigned int, double> GetVariableRanking() const;
       

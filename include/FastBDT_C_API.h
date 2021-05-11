@@ -49,9 +49,9 @@ extern "C" {
 
     void Load(void* ptr, char *weightfile);
 
-    double Predict(void *ptr, float *array);
+    // double* Predict(void *ptr, float *array);
 
-    void PredictArray(void *ptr, float *array, double *result, unsigned int nEvents);
+    // void PredictArray(void *ptr, float *array, double *result, unsigned int nEvents);
 
     void Save(void* ptr, char *weightfile);
     

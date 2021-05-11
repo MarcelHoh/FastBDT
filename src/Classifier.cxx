@@ -7,6 +7,8 @@
 
 #include "Classifier.h"
 #include <iostream>
+#include <unordered_set>
+#include <numeric>
 
 namespace FastBDT {
 
@@ -73,7 +75,7 @@ namespace FastBDT {
     }
     
     // derive the number of classes
-    std::unordered_set yHashMap;
+    std::unordered_set<unsigned int> yHashMap;
     std::map<unsigned int, unsigned int> classLabelToIndex;
     std::map<unsigned int, unsigned int> classIndexToLabel;
 
@@ -94,11 +96,10 @@ namespace FastBDT {
       }
     }
     
-    delete classCounter;
-    delete yHashMap;
+    delete &yHashMap;
 
     std::vector<unsigned int> startingIndexPerClass(nEventsPerClass.size(), 0);
-    std::partial_sum(nEventsPerClass.begin(), nEventsPerClass.end(), startingIndexPerClass.begin()+1, plus<unsigned int>());
+    std::partial_sum(nEventsPerClass.begin(), nEventsPerClass.end(), startingIndexPerClass.begin()+1, std::plus<unsigned int>());
   
     EventSample eventSample(numberOfEvents, m_nClasses, nEventsPerClass, startingIndexPerClass, m_numberOfFinalFeatures, m_numberOfFlatnessFeatures, m_binning);
     std::vector<unsigned int> bins(m_numberOfFinalFeatures+m_numberOfFlatnessFeatures);
@@ -166,7 +167,7 @@ namespace FastBDT {
               bin++;
           }
         }
-        if (nClasses == 2) {
+        if (m_nClasses == 2) {
           return m_binned_forest.Analyse(bins);
         } else {
           return m_binned_forest.AnalyseMulticlass(bins);

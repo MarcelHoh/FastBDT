@@ -89,7 +89,7 @@ class Classifier {
       double GetFlatnessLoss() const { return m_flatnessLoss; }
       void SetFlatnessLoss(double flatnessLoss) { m_flatnessLoss = flatnessLoss; }
 			
-      void fit(const std::vector<std::vector<float>> &X, const std::vector<bool> &y, const std::vector<Weight> &w);
+      void fit(const std::vector<std::vector<float>> &X, const std::vector<unsigned int> &y, const std::vector<Weight> &w);
 
       float predict(const std::vector<float> &X) const;
       

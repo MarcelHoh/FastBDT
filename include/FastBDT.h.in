@@ -623,8 +623,8 @@ namespace FastBDT {
       EventSample(unsigned int nEvents, unsigned int nClasses, std::vector<unsigned int> nEventsPerClass, std::vector<unsigned int> startingIndexPerClass, unsigned int nFeatures, unsigned int nSpectators, const std::vector<unsigned int> &nLevels) : 
       nEvents(nEvents), nClasses(nClasses), nEventsPerClass(nEventsPerClass), startingIndexPerClass(startingIndexPerClass),
       weights(nEvents), flags(nEvents), values(nEvents,nFeatures,nSpectators,nLevels) {
-        maxEvents = *std::max_element(nEventsPerClass.begin(), nEventsPerClass.end();
-        minEvents = *std::min_element(nEventsPerClass.begin(), nEventsPerClass.end();
+        maxEvents = *std::max_element(nEventsPerClass.begin(), nEventsPerClass.end());
+        minEvents = *std::min_element(nEventsPerClass.begin(), nEventsPerClass.end());
        }
 
       void AddEvent(const std::vector<unsigned int> &features, Weight weight, unsigned int classIndex);
@@ -971,7 +971,7 @@ namespace FastBDT {
   class ForestBuilder {
 
     public:
-      ForestBuilder(EventSample &eventSample, unsigned int nTrees, double shrinkage, double randRatio, unsigned int nLayersPerTree, bool sPlot=false, double flatnessLoss=-1.0, unsigned int nClasses);
+      ForestBuilder(EventSample &eventSample, unsigned int nTrees, double shrinkage, double randRatio, unsigned int nLayersPerTree, unsigned int nClasses, bool sPlot=false, double flatnessLoss=-1.0);
       void print();
 
       const std::vector<Tree<unsigned int>>& GetForest() const { return forest; }

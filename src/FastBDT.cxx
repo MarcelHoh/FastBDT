@@ -347,7 +347,7 @@ namespace FastBDT {
         nodes[flag-1].AddSignalWeight( weights.GetBoostWeight(iEvent), weights.GetOriginalWeight(iEvent) );
       }
     }
-    for (unsigned int iClass; iClass < sample.GetNClasses(); ++iClass) {
+    for (unsigned int iClass=0; iClass < sample.GetNClasses(); ++iClass) {
       if (iClass == signalClassIndex) continue;
       for(unsigned int iEvent = sample.GetStartingIndexPerClass(iClass); iEvent < sample.GetClassLastIndex(iClass); ++iEvent) {
         const int flag = flags.Get(iEvent);
@@ -379,29 +379,31 @@ namespace FastBDT {
     std::cout << "Finished Printing Tree" << std::endl;
   }
 
-  ForestBuilder::ForestBuilder(EventSample &sample, unsigned int nTrees, double shrinkage, double randRatio, unsigned int nLayersPerTree, bool sPlot, double flatnessLoss, unsigned int nClasses) : shrinkage(shrinkage), flatnessLoss(flatnessLoss), nClasses(nClasses) {
+  ForestBuilder::ForestBuilder(EventSample &sample, unsigned int nTrees, double shrinkage, double randRatio, unsigned int nLayersPerTree, unsigned int nClasses, bool sPlot, double flatnessLoss) : shrinkage(shrinkage), flatnessLoss(flatnessLoss), nClasses(nClasses) {
 
     if ((sample.GetNClasses() != 2) && (sPlot)) {
       throw std::runtime_error("sPlot is not supported with multiclass classification");
     }
-
     auto &weights = sample.GetWeights();
-    sums = weights.GetSums(sample.GetNSignals()); 
-    // Calculating the initial F value from the proportion of the number of signal and background events in the sample
-    double average = (sums[0] - sums[1])/(sums[0] + sums[1]);
-    F0 = 0.5*std::log((1+average)/(1-average));
-    
-    // Apply F0 to original_weights because F0 is not a boost_weight, otherwise prior probability in case of
-    // Events with missing values is wrong.
-    if (F0 != 0.0) {
-        const unsigned int nEvents = sample.GetNEvents();
-        const unsigned int nSignals = sample.GetNSignals();
-        for(unsigned int iEvent = 0; iEvent < nSignals; ++iEvent)
-          weights.SetOriginalWeight(iEvent, 2.0 * sums[1] / (sums[0] + sums[1]) * weights.GetOriginalWeight(iEvent));
-        for(unsigned int iEvent = nSignals; iEvent < nEvents; ++iEvent)
-          weights.SetOriginalWeight(iEvent, 2.0 * sums[0] / (sums[0] + sums[1]) * weights.GetOriginalWeight(iEvent));
-    }
-        
+    sums = weights.GetSums(sample.GetNEventsClassVector(), sample.GetStartingIndexPerClassVector()); 
+
+    //skip the reweighting for multiclass (TODO revisit this)
+    if (nClasses==2) {
+      // assumes signal class = 0, background class = 1
+
+      // Calculating the initial F value from the proportion of the number of signal and background events in the sample
+      double average = (sums[0] - sums[1])/(sums[0] + sums[1]);
+      F0 = 0.5*std::log((1+average)/(1-average));
+      
+      // Apply F0 to original_weights because F0 is not a boost_weight, otherwise prior probability in case of
+      // Events with missing values is wrong.
+      if (F0 != 0.0) {
+          for(unsigned int iEvent = sample.GetStartingIndexPerClass(0); iEvent < sample.GetClassLastIndex(0); ++iEvent)
+            weights.SetOriginalWeight(iEvent, 2.0 * sums[1] / (sums[0] + sums[1]) * weights.GetOriginalWeight(iEvent));
+          for(unsigned int iEvent = sample.GetStartingIndexPerClass(1); iEvent < sample.GetClassLastIndex(1); ++iEvent)
+            weights.SetOriginalWeight(iEvent, 2.0 * sums[0] / (sums[0] + sums[1]) * weights.GetOriginalWeight(iEvent));
+      }
+    }    
     // Resize the FCache to the number of events, and initalise it with the inital 0.0 value
     // Not F0 because F0 is already used in the original_weights
     FCache.resize(sample.GetNEvents(), 0.0);
@@ -421,7 +423,7 @@ namespace FastBDT {
         auto nSpectators = values.GetNSpectators();
         auto &nBins = values.GetNBins();
         const unsigned int nEvents = sample.GetNEvents();
-        const unsigned int nSignals = sample.GetNSignals();
+        // const unsigned int nSignals = sample.GetNSignals();
 
 
         // very clunky implementation. need these to be able to handle the maximum possible case
@@ -430,7 +432,7 @@ namespace FastBDT {
 
         uniform_bin_weight_class.resize(sample.GetNClasses());
         for (unsigned int iClass = 0; iClass < sample.GetNClasses(); ++iClass) {
-          uniform_bin_weight_class[iClass].resize(nSpectators)
+          uniform_bin_weight_class[iClass].resize(nSpectators);
         }
         weight_below_current_F_per_uniform_bin.resize(nSpectators);
         
@@ -548,6 +550,7 @@ namespace FastBDT {
   
   void ForestBuilder::updateEventWeightsWithFlatnessPenalty(EventSample &eventSample, unsigned int signalClassIndex) {
     // TODO - Update this for multiclass
+    // currently assumes signal class = 0, background = 1
 
     const unsigned int nEvents = eventSample.GetNEvents();
 
@@ -585,17 +588,17 @@ namespace FastBDT {
     }
 
     double global_weight_below_current_F = 0;
-    for(unsigned int iIndex = 0; iIndex < GetNEventsClass(signalClassIndex); ++iIndex) {
+    for(unsigned int iIndex = 0; iIndex < eventSample.GetNEventsClass(signalClassIndex); ++iIndex) {
         unsigned int iEvent = signal_event_index_sorted_by_F[iIndex].index;
           
         global_weight_below_current_F += weights.GetOriginalWeight(iEvent);
-        double F = global_weight_below_current_F / sums[0];
+        double F = global_weight_below_current_F / sums[signalClassIndex];
         double fw = 0.0;
 
         for(unsigned int iSpectator = 0; iSpectator < nSpectators; ++iSpectator) {
           const uint64_t uniformBin = values.GetSpectator(iEvent, iSpectator);
           weight_below_current_F_per_uniform_bin[iSpectator][uniformBin] += weights.GetOriginalWeight(iEvent);
-          double F_bin = weight_below_current_F_per_uniform_bin[iSpectator][uniformBin] / (uniform_bin_weight_signal[iSpectator][uniformBin] * sums[0]);
+          double F_bin = weight_below_current_F_per_uniform_bin[iSpectator][uniformBin] / (uniform_bin_weight_class[0][iSpectator][uniformBin] * sums[signalClassIndex]);
 
           fw += (F_bin - F);
         }
@@ -611,7 +614,14 @@ namespace FastBDT {
     }
     
     global_weight_below_current_F = 0;
-    
+
+    Weight sumsBckgrnd;
+    if (nClasses != 2) {
+      sumsBckgrnd = std::accumulate(sums.begin(), sums.end()-1, 0U) - sums[signalClassIndex];
+    } else {
+      sumsBckgrnd = sums[1];
+    }
+
     for(unsigned int iIndex = 0; iIndex < bckgrd_event_index_sorted_by_F.size(); ++iIndex) {
         unsigned int iEvent = bckgrd_event_index_sorted_by_F[iIndex].index;
           
@@ -622,7 +632,7 @@ namespace FastBDT {
         for(unsigned int iSpectator = 0; iSpectator < nSpectators; ++iSpectator) {
           const uint64_t uniformBin = values.GetSpectator(iEvent, iSpectator);
           weight_below_current_F_per_uniform_bin[iSpectator][uniformBin] += weights.GetOriginalWeight(iEvent);
-          double F_bin = weight_below_current_F_per_uniform_bin[iSpectator][uniformBin] / (uniform_bin_weight_bckgrd[iSpectator][uniformBin] * sums[1]);
+          double F_bin = weight_below_current_F_per_uniform_bin[iSpectator][uniformBin] / (uniform_bin_weight_class[1][iSpectator][uniformBin] * sumsBckgrnd);
 
           fw += (F_bin - F);
         }

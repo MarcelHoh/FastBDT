@@ -92,7 +92,7 @@ namespace FastBDT {
     // Therefore start the index at predefined starting values which are the cumulative sums of all classes with lower indices.
     unsigned int index = startingIndexPerClass[classIndex];
     index += nEventsPerClass[classIndex];
-    ++nEventsPerClass[classIndex];
+    nEventsPerClass[classIndex]++;
 
     weights.SetOriginalWeight(index, weight);
     values.Set(index, features);
@@ -381,7 +381,8 @@ namespace FastBDT {
 
   ForestBuilder::ForestBuilder(EventSample &sample, unsigned int nTrees, double shrinkage, double randRatio, unsigned int nLayersPerTree, unsigned int nClasses, bool sPlot, double flatnessLoss) : shrinkage(shrinkage), flatnessLoss(flatnessLoss), nClasses(nClasses) {
 
-    if ((sample.GetNClasses() != 2) && (sPlot)) {
+    std::cout << sPlot << std::endl;
+    if (sample.GetNClasses() != 2 and sPlot) {
       throw std::runtime_error("sPlot is not supported with multiclass classification");
     }
     auto &weights = sample.GetWeights();

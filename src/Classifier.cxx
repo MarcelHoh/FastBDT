@@ -78,13 +78,13 @@ namespace FastBDT {
       }
       yClass[iY] = classLabelToIndex[y[iY]];
     }
-    
-    delete &yHashMap;
 
-    std::vector<unsigned int> startingIndexPerClass(nEventsPerClass.size(), 0);
+    std::vector<unsigned int> startingIndexPerClass(nEventsPerClass.size()+1, 0);
     std::partial_sum(nEventsPerClass.begin(), nEventsPerClass.end(), startingIndexPerClass.begin()+1, std::plus<unsigned int>());
-  
+    startingIndexPerClass.resize(nEventsPerClass.size());
+
     bool anyPurityTransforms = std::any_of(m_purityTransformation.begin(), m_purityTransformation.end(), [](bool i){return i;});
+
     std::vector<bool> yBool;
 
     if (anyPurityTransforms) {
@@ -118,7 +118,7 @@ namespace FastBDT {
       m_featureBinning.push_back(FeatureBinning<float>(m_binning[iFeature + m_numberOfFinalFeatures], feature));
     }
     
-    EventSample eventSample(numberOfEvents, m_nClasses, nEventsPerClass, startingIndexPerClass, m_numberOfFinalFeatures, m_numberOfFlatnessFeatures, m_binning);
+    EventSample eventSample(numberOfEvents, m_nClasses, startingIndexPerClass, m_numberOfFinalFeatures, m_numberOfFlatnessFeatures, m_binning);
     std::vector<unsigned int> bins(m_numberOfFinalFeatures+m_numberOfFlatnessFeatures);
 
     for(unsigned int iEvent = 0; iEvent < numberOfEvents; ++iEvent) {
@@ -137,12 +137,13 @@ namespace FastBDT {
         bins[bin] = m_featureBinning[iFeature + m_numberOfFeatures].ValueToBin(X[iFeature + m_numberOfFeatures][iEvent]);
         bin++;
       }
-      eventSample.AddEvent(bins, w[iEvent], y[iEvent] == 1);
+      eventSample.AddEvent(bins, w[iEvent], yClass[iEvent] == 1);
     }
    
     m_featureBinning.resize(m_numberOfFeatures);
 
-    ForestBuilder df(eventSample, m_nTrees, m_shrinkage, m_subsample, m_depth, m_sPlot, m_flatnessLoss, m_nClasses);
+    std::cout << m_sPlot << std::endl;
+    ForestBuilder df(eventSample, m_nTrees, m_shrinkage, m_subsample, m_depth, m_nClasses, m_sPlot, m_flatnessLoss);
     if(m_can_use_fast_forest) {
         Forest<float> temp_forest( df.GetShrinkage(), df.GetF0(), m_transform2probability, m_nClasses);
         for( auto t : df.GetForest() ) {

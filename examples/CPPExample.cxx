@@ -12,9 +12,22 @@ std::vector<std::vector<float>> GetIrisX() {
   return X;
 }
 
-std::vector<bool> GetIrisY() {
+std::vector<bool> GetIrisYBool() {
    std::vector<bool> y = {false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true};
    return y;
+}
+
+std::vector<unsigned int> GetIrisY() {
+	std::vector<unsigned int> y = {};
+	std::vector<bool> yB = GetIrisYBool();
+	for (unsigned int i = 0; i < yB.size(); ++i) {
+		if (yB[i]) {
+			y.push_back(0);
+		} else {
+			y.push_back(1);
+		}
+	}
+	return y;
 }
 
 std::vector<float> GetIrisW() {
@@ -28,8 +41,10 @@ float GetIrisScore(const FastBDT::Classifier &classifier) {
     auto y = GetIrisY();
     float sum = 0;
     for(unsigned int i = 0; i < y.size(); ++i) {
-      float p = classifier.predict({X[0][i], X[1][i], X[2][i], X[3][i]});
+      double p = classifier.predict({X[0][i], X[1][i], X[2][i], X[3][i]})[0];
+      //std::cout << p << "   " << y[i] << std::endl;
       sum += (static_cast<int>(y[i])-p)*(static_cast<int>(y[i])-p);
+      //sum += (1-static_cast<int>(y[i])-p)*(1-static_cast<int>(y[i])-p);
     }
     return sum;
 }

@@ -621,9 +621,12 @@ namespace FastBDT {
        * @param nSpectators number of spectators per event
        * @param nLevels number of bin levels
        */
-      EventSample(unsigned int nEvents, unsigned int nClasses, std::vector<unsigned int> nEventsPerClass, std::vector<unsigned int> startingIndexPerClass, unsigned int nFeatures, unsigned int nSpectators, const std::vector<unsigned int> &nLevels) : 
-      nEvents(nEvents), nClasses(nClasses), nEventsPerClass(nEventsPerClass), startingIndexPerClass(startingIndexPerClass),
+      EventSample(unsigned int nEvents, unsigned int nClasses, std::vector<unsigned int> startingIndexPerClass, unsigned int nFeatures, unsigned int nSpectators, const std::vector<unsigned int> &nLevels) : 
+      nEvents(nEvents), nClasses(nClasses), startingIndexPerClass(startingIndexPerClass),
       weights(nEvents), flags(nEvents), values(nEvents,nFeatures,nSpectators,nLevels) {
+
+        nEventsPerClass.resize(startingIndexPerClass.size());
+        std::fill(nEventsPerClass.begin(), nEventsPerClass.end(), 0U);
         maxEvents = *std::max_element(nEventsPerClass.begin(), nEventsPerClass.end());
         minEvents = *std::min_element(nEventsPerClass.begin(), nEventsPerClass.end());
        }

@@ -151,7 +151,7 @@ class Classifier(object):
     def predict(self, X):
         X_temp = np.require(X, dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
         N = len(X)
-        nClasses = FastBDT_library.GetNClasses()
+        nClasses = FastBDT_library.GetNClasses(self.forest)
         if nClasses == 2:
              out = np.require(np.zeros(N), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
              p = np.require(np.zeros(1), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
@@ -166,7 +166,7 @@ class Classifier(object):
         return out
     
     def predict_single(self, row):
-        nClasses = FastBDT_library.GetNClasses()
+        nClasses = FastBDT_library.GetNClasses(self.forest)
 
         # stupid workaraound - TODO fox
         if nClasses == 2:

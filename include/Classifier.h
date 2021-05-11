@@ -28,6 +28,7 @@ class Classifier {
         stream >> m_version;
         stream >> m_nTrees;
         stream >> m_depth;
+        stream >> m_nClasses;
         stream >> m_binning;
         stream >> m_shrinkage;
         stream >> m_subsample;
@@ -93,7 +94,7 @@ class Classifier {
 			
       void fit(const std::vector<std::vector<float>> &X, const std::vector<unsigned int> &y, const std::vector<Weight> &w);
 
-      std::vector<double> predict(const std::vector<float> &X) const;
+      std::vector<float> predict(const std::vector<float> &X) const;
       
       std::map<unsigned int, double> GetVariableRanking() const;
       

@@ -1034,11 +1034,11 @@ namespace FastBDT {
        * @param values the feature values of the event in an arbitrary iterator supporting operator[]
        */
       template<class Iterator>
-      double GetF(const Iterator &values) const {
+      float GetF(const Iterator &values) const {
 
           // Determines the F value by looping over all trees and
           // summing up the weights of the nodes the event belongs to.
-          double F = F0_div_shrink;
+          float F = F0_div_shrink;
           for( auto &tree : forest) 
             F += tree.GetBoostWeight( tree.ValueToNode(values) );
           return F*shrinkage;
@@ -1050,12 +1050,12 @@ namespace FastBDT {
        * TODO find away to avoid returning a vector of size 1.
        */
       template<class Iterator>
-      std::vector<double> Analyse(const Iterator &values) const {
+      std::vector<float> Analyse(const Iterator &values) const {
 
           if(not transform2probability)
-              return std::vector<double> {GetF(values)};
+              return std::vector<float> {GetF(values)};
           // Calculate signal probability out of the F value
-          return std::vector<double> {1.0/(1.0+std::exp(-2*GetF(values)))};
+          return std::vector<float> {1.0/(1.0+std::exp(-2*GetF(values)))};
 
       }
       
@@ -1067,14 +1067,14 @@ namespace FastBDT {
        * @param values the feature values of the event in an arbitrary iterator supporting operator[]
        */
       template<class Iterator>
-      std::vector<double> GetFMulticlass(const Iterator &values) const {
+      std::vector<float> GetFMulticlass(const Iterator &values) const {
 
           // Determines the F value by looping over all trees and
           // summing up the weights of the nodes the event belongs to.
 
           // TODO - consider if the trees that are not aimed at the class provide
           // anything of value or if we can just take every nth tree
-          std::vector<double> F(nClasses, F0_div_shrink);
+          std::vector<float> F(nClasses, F0_div_shrink);
           unsigned int iClass = 0U;
 
           for(unsigned int iTree = 0; iTree < forest.size(); ++iTree) { 
@@ -1083,7 +1083,7 @@ namespace FastBDT {
             if (iClass == nClasses) iClass = 0; // modulo
           }
           double _shrinkage = shrinkage;
-          std::transform(F.begin(), F.end(), F.begin(), [&_shrinkage](double c){return c * _shrinkage;});
+          std::transform(F.begin(), F.end(), F.begin(), [&_shrinkage](float c){return c * _shrinkage;});
           return F;
       }
 
@@ -1092,7 +1092,7 @@ namespace FastBDT {
        * @param values the feature values of the event in an arbitrary iterator supporting operator[]
        */
       template<class Iterator>
-      std::vector<double> AnalyseMulticlass(const Iterator &values) const {
+      std::vector<float> AnalyseMulticlass(const Iterator &values) const {
 
           if(not transform2probability)
               return GetFMulticlass(values);
@@ -1103,11 +1103,15 @@ namespace FastBDT {
           // TODO - think if this can be better
           // return 1.0/(1.0+std::exp(-2*GetF(values)));
 
-          std::vector<double> fvals = GetFMulticlass(values);
-          std::transform(fvals.begin(), fvals.end(), fvals.begin(), [](double d){return std::exp(d);});
-          double expSum = std::accumulate(fvals.begin(), fvals.end(), 0.0);
-          std::vector<double> pvals(fvals.size(), 0.0);
+          std::vector<float> fvals = GetFMulticlass(values);
+          std::transform(fvals.begin(), fvals.end(), fvals.begin(), [](float d){return std::exp(d);});
+          float expSum = std::accumulate(fvals.begin(), fvals.end(), 0.0);
+          std::vector<float> pvals(fvals.size(), 0.0);
           std::transform(fvals.begin(), fvals.end(), pvals.begin(), [&expSum](double f){return f / expSum;});
+          for (unsigned int i = 0; i < pvals.size(); i++) {
+            std::cout << pvals[i] << " ";
+          }
+          std::cout << std::endl;
           return pvals;
       }
 

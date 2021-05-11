@@ -142,7 +142,6 @@ namespace FastBDT {
    
     m_featureBinning.resize(m_numberOfFeatures);
 
-    std::cout << m_sPlot << std::endl;
     ForestBuilder df(eventSample, m_nTrees, m_shrinkage, m_subsample, m_depth, m_nClasses, m_sPlot, m_flatnessLoss);
     if(m_can_use_fast_forest) {
         Forest<float> temp_forest( df.GetShrinkage(), df.GetF0(), m_transform2probability, m_nClasses);
@@ -168,10 +167,14 @@ namespace FastBDT {
 
   }
       
-  std::vector<double> Classifier::predict(const std::vector<float> &X) const {
+  std::vector<float> Classifier::predict(const std::vector<float> &X) const {
 
       if(m_can_use_fast_forest) {
-        return m_fast_forest.Analyse(X);
+        if (m_nClasses == 2) {
+          return m_fast_forest.Analyse(X);
+        } else {
+          return m_fast_forest.AnalyseMulticlass(X);
+        }
       } else {
         std::vector<unsigned int> bins(m_numberOfFinalFeatures);
         unsigned int bin = 0;
@@ -262,6 +265,7 @@ std::ostream& operator<<(std::ostream& stream, const Classifier& classifier) {
     stream << classifier.m_version << std::endl;
     stream << classifier.m_nTrees << std::endl;
     stream << classifier.m_depth << std::endl;
+    stream << classifier.m_nClasses << std::endl;
     stream << classifier.m_binning << std::endl;
     stream << classifier.m_shrinkage << std::endl;
     stream << classifier.m_subsample << std::endl;

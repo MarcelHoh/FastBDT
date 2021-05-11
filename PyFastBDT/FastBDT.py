@@ -21,7 +21,7 @@ FastBDT_library.Save.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 FastBDT_library.Fit.argtypes = [ctypes.c_void_p, c_float_p, c_float_p, c_bool_p, ctypes.c_uint]
 
 FastBDT_library.Predict.argtypes = [ctypes.c_void_p, c_float_p]
-FastBDT_library.Predict.restype = ctypes.c_double
+# FastBDT_library.Predict.restype = ctypes.c_float_p
 
 #FastBDT_library.PredictArray.argtypes = [ctypes.c_void_p, c_float_p, c_double_p, ctypes.c_uint]
 
@@ -153,29 +153,33 @@ class Classifier(object):
         N = len(X)
         nClasses = FastBDT_library.GetNClasses(self.forest)
         if nClasses == 2:
-             out = np.require(np.zeros(N), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
-             p = np.require(np.zeros(1), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
+             out = np.require(np.zeros(N), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
+             p   = np.require(np.zeros(1), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
         else: 
-             out = np.require(np.zeros(N, nClasses), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
-             p = np.require(np.zeros(nClasses), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
+             out = np.require(np.zeros(N, nClasses), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
+             p   = np.require(np.zeros(nClasses), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
 
         # FastBDT_library.PredictArray(self.forest, X_temp[row].ctypes.data_as(c_float_p), p.ctypes.data_as(c_double_p), int(X_temp.shape[0]))
         for row in range(len(X_temp)):
-            FastBDT_library.Predict(self.forest, X_temp[row].ctypes.data_as(c_float_p), p.ctypes.data_as(c_double_p))
+            FastBDT_library.Predict(self.forest, X_temp[row].ctypes.data_as(c_float_p), p.ctypes.data_as(c_float_p))
             out[row] = p
         return out
     
     def predict_single(self, row):
         nClasses = FastBDT_library.GetNClasses(self.forest)
+        row_temp = np.require(row, dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
 
-        # stupid workaraound - TODO fox
+        # stupid workaraound - TODO fix
         if nClasses == 2:
-             p = np.require(np.zeros(1), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
+             p = np.require(np.zeros(1),        dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
         else: 
-             p = np.require(np.zeros(nClasses), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
+             p = np.require(np.zeros(nClasses), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
 
-        FastBDT_library.Predict(self.forest, row.ctypes.data_as(c_float_p), p.ctypes.data_as(c_double_p))
+        FastBDT_library.Predict(self.forest, row_temp.ctypes.data_as(c_float_p), p.ctypes.data_as(c_float_p))
         return p
+
+    def GetNClasses(self):
+        return FastBDT_library.GetNClasses(self.forest)
 
     def save(self, weightfile):
         FastBDT_library.Save(self.forest, bytes(weightfile, 'utf-8'))

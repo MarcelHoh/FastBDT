@@ -136,7 +136,7 @@ extern "C" {
 
     // TODO - this seems wrong
 
-    void Predict(void *ptr, float *array, double *result) {
+    void Predict(void *ptr, float *array, float *result) {
       Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
       result = &(expertise->classifier.predict(std::vector<float>(array, array + expertise->classifier.GetNFeatures()))[0]);
       return;

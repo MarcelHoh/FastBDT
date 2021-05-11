@@ -381,7 +381,6 @@ namespace FastBDT {
 
   ForestBuilder::ForestBuilder(EventSample &sample, unsigned int nTrees, double shrinkage, double randRatio, unsigned int nLayersPerTree, unsigned int nClasses, bool sPlot, double flatnessLoss) : shrinkage(shrinkage), flatnessLoss(flatnessLoss), nClasses(nClasses) {
 
-    std::cout << sPlot << std::endl;
     if (sample.GetNClasses() != 2 and sPlot) {
       throw std::runtime_error("sPlot is not supported with multiclass classification");
     }

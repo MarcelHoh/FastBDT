@@ -48,8 +48,12 @@ class Classifier {
 
       friend std::ostream& operator<<(std::ostream& stream, const Classifier& classifier);
 
-			Classifier(unsigned int nTrees, unsigned int depth, std::vector<unsigned int> binning, double shrinkage = 0.1, double subsample = 1.0, bool sPlot = false, double flatnessLoss = -1.0, std::vector<bool> purityTransformation = {}, unsigned int numberOfFlatnessFeatures=0, bool transform2probability=true) :
-        m_nTrees(nTrees), m_depth(depth), m_binning(binning), m_shrinkage(shrinkage), m_subsample(subsample), m_sPlot(sPlot), m_flatnessLoss(flatnessLoss), m_purityTransformation(purityTransformation), m_numberOfFlatnessFeatures(numberOfFlatnessFeatures), m_transform2probability(transform2probability), m_can_use_fast_forest(true) { }
+			Classifier(unsigned int nTrees, unsigned int depth, std::vector<unsigned int> binning, double shrinkage = 0.1, double subsample = 1.0, 
+                 bool sPlot = false, double flatnessLoss = -1.0, std::vector<bool> purityTransformation = {}, unsigned int numberOfFlatnessFeatures=0,
+                 bool transform2probability=true) :
+        m_nTrees(nTrees), m_depth(depth), m_binning(binning), m_shrinkage(shrinkage), m_subsample(subsample), 
+        m_sPlot(sPlot), m_flatnessLoss(flatnessLoss), m_purityTransformation(purityTransformation), m_numberOfFlatnessFeatures(numberOfFlatnessFeatures), 
+        m_transform2probability(transform2probability), m_can_use_fast_forest(true) { }
 
       void Print();
 
@@ -113,6 +117,8 @@ class Classifier {
     unsigned int m_numberOfFinalFeatures = 0;
     std::vector<FeatureBinning<float>> m_featureBinning;
     std::vector<PurityTransformation> m_purityBinning;
+
+    unsigned int m_nClasses = 0;
 
     bool m_can_use_fast_forest = true;
     Forest<float> m_fast_forest;

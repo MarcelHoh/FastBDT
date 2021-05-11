@@ -10,7 +10,7 @@
 
 namespace FastBDT {
 
-  void Classifier::fit(const std::vector<std::vector<float>> &X, const std::vector<bool> &y, const std::vector<Weight> &w) {
+  void Classifier::fit(const std::vector<std::vector<float>> &X, const std::vector<unsigned int> &y, const std::vector<Weight> &w) {
 
     if(static_cast<int>(X.size()) - static_cast<int>(m_numberOfFlatnessFeatures) <= 0) {
       throw std::runtime_error("FastBDT requires at least one feature");
@@ -71,8 +71,36 @@ namespace FastBDT {
       auto feature = X[iFeature + m_numberOfFeatures];
       m_featureBinning.push_back(FeatureBinning<float>(m_binning[iFeature + m_numberOfFinalFeatures], feature));
     }
+    
+    // derive the number of classes
+    std::unordered_set yHashMap;
+    std::map<unsigned int, unsigned int> classLabelToIndex;
+    std::map<unsigned int, unsigned int> classIndexToLabel;
+
+    // O(n)
+    m_nClasses = 0; // use as counter and to then store the total number of classes
+    std::vector<unsigned int> nEventsPerClass = {};
+
+    for (auto yVal : y) {
+      if (yHashMap.find(yVal) == yHashMap.end()) {
+        yHashMap.insert(yVal);
+        classLabelToIndex[yVal] = m_nClasses;
+        classIndexToLabel[m_nClasses] = yVal;
+        nEventsPerClass.push_back(1);
+        m_nClasses++;
+      }
+      else {
+        nEventsPerClass[classLabelToIndex[yVal]]++;
+      }
+    }
+    
+    delete classCounter;
+    delete yHashMap;
+
+    std::vector<unsigned int> startingIndexPerClass(nEventsPerClass.size(), 0);
+    std::partial_sum(nEventsPerClass.begin(), nEventsPerClass.end(), startingIndexPerClass.begin()+1, plus<unsigned int>());
   
-    EventSample eventSample(numberOfEvents, m_numberOfFinalFeatures, m_numberOfFlatnessFeatures, m_binning);
+    EventSample eventSample(numberOfEvents, m_nClasses, nEventsPerClass, startingIndexPerClass, m_numberOfFinalFeatures, m_numberOfFlatnessFeatures, m_binning);
     std::vector<unsigned int> bins(m_numberOfFinalFeatures+m_numberOfFlatnessFeatures);
 
     for(unsigned int iEvent = 0; iEvent < numberOfEvents; ++iEvent) {
@@ -138,7 +166,11 @@ namespace FastBDT {
               bin++;
           }
         }
-        return m_binned_forest.Analyse(bins);
+        if (nClasses == 2) {
+          return m_binned_forest.Analyse(bins);
+        } else {
+          return m_binned_forest.AnalyseMulticlass(bins);
+        }
       }
   }
   

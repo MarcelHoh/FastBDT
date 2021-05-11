@@ -7,8 +7,8 @@
 #ifndef ADDITIONAL_INCLUDE_GUARD_BECAUSE_ROOT_IS_SO_STUPID
 #define ADDITIONAL_INCLUDE_GUARD_BECAUSE_ROOT_IS_SO_STUPID
 
-#define FastBDT_VERSION_MAJOR @FastBDT_VERSION_MAJOR@
-#define FastBDT_VERSION_MINOR @FastBDT_VERSION_MINOR@
+#define FastBDT_VERSION_MAJOR 5
+#define FastBDT_VERSION_MINOR 2
 
 #include <iostream>
 #include <stdexcept>
@@ -534,7 +534,6 @@ namespace FastBDT {
        */ 
       std::vector<Weight> GetSums(std::vector<unsigned int> nEventsPerClass, std::vector<unsigned int> startingIndexPerClass) const;  
       std::vector<Weight> GetSumsAssumingSignalClass(unsigned int signalClassIndex, std::vector<unsigned int> nEventsPerClass, std::vector<unsigned int> startingIndexPerClass) const;
-
     private:
       std::vector<Weight> boost_weights;
       std::vector<Weight> flatness_weights;
@@ -620,8 +619,7 @@ namespace FastBDT {
        * @param nSpectators number of spectators per event
        * @param nLevels number of bin levels
        */
-      EventSample(unsigned int nEvents, unsigned int nClasses, std::vector<unsigned int> nEventsPerClass, std::vector<unsigned int> startingIndexPerClass, unsigned int nFeatures, unsigned int nSpectators, const std::vector<unsigned int> &nLevels) : 
-      nEvents(nEvents), nClasses(nClasses), nEventsPerClass(nEventsPerClass), startingIndexPerClass(startingIndexPerClass),
+      EventSample(unsigned int nEvents, unsigned int nFeatures, unsigned int nSpectators, const std::vector<unsigned int> &nLevels) : nEvents(nEvents), nSignals(0), nBckgrds(0),
       weights(nEvents), flags(nEvents), values(nEvents,nFeatures,nSpectators,nLevels) { }
 
       void AddEvent(const std::vector<unsigned int> &features, Weight weight, unsigned int classIndex);
@@ -644,19 +642,13 @@ namespace FastBDT {
 
 
       inline unsigned int GetNEvents() const { return nEvents; } 
-      inline unsigned int GetNEventsClass(unsigned int classIndex) const { return nEventsPerClass[classIndex]; } 
-      inline unsigned int GetStartingIndexPerClass(unsigned int classIndex) const { return startingIndexPerClass[classIndex]; }
-      
-      inline unsigned int GetNEventsClassVector() const { return nEventsPerClass; } 
-      inline unsigned int GetStartingIndexPerClassVector() const { return startingIndexPerClass; }
-
-      inline unsigned int GetClassLastIndex(unsigned int classIndex) const { return startingIndexPerClass[classIndex] + nEventsPerClass[classIndex];}
+      inline unsigned int GetNSignals() const { return nSignals; } 
+      inline unsigned int GetNBckgrds() const { return nBckgrds; }
 
     private:
       unsigned int nEvents; 
-      unsigned int nClasses; 
-      std::vector<unsigned int> nEventsPerClass; 
-      std::vector<unsigned int> startingIndexPerClass; 
+      unsigned int nSignals; 
+      unsigned int nBckgrds; 
 
       EventWeights weights;
       EventFlags flags;

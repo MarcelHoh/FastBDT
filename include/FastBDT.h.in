@@ -622,7 +622,10 @@ namespace FastBDT {
        */
       EventSample(unsigned int nEvents, unsigned int nClasses, std::vector<unsigned int> nEventsPerClass, std::vector<unsigned int> startingIndexPerClass, unsigned int nFeatures, unsigned int nSpectators, const std::vector<unsigned int> &nLevels) : 
       nEvents(nEvents), nClasses(nClasses), nEventsPerClass(nEventsPerClass), startingIndexPerClass(startingIndexPerClass),
-      weights(nEvents), flags(nEvents), values(nEvents,nFeatures,nSpectators,nLevels) { }
+      weights(nEvents), flags(nEvents), values(nEvents,nFeatures,nSpectators,nLevels) {
+        maxEvents = *std::max_element(nEventsPerClass.begin(), nEventsPerClass.end();
+        minEvents = *std::min_element(nEventsPerClass.begin(), nEventsPerClass.end();
+       }
 
       void AddEvent(const std::vector<unsigned int> &features, Weight weight, unsigned int classIndex);
 
@@ -632,7 +635,7 @@ namespace FastBDT {
        * @param iEvent position of event
        * @return True if event is signal, otherwise false
        */
-      inline bool IsSignal(unsigned int iEvent) const { return iEvent < nSignals; }
+      //inline bool IsSignal(unsigned int iEvent) const { return iEvent < nSignals; }
 
       inline const EventWeights& GetWeights() const { return weights; }
       inline EventWeights& GetWeights() { return weights; }
@@ -644,17 +647,37 @@ namespace FastBDT {
 
 
       inline unsigned int GetNEvents() const { return nEvents; } 
+      inline unsigned int GetNClasses() const { return nClasses; } 
+      inline unsigned int EventIndexToClassIndex(unsigned int iEvent) {
+        for (unsigned int iClass = 0; iClass < nClasses -1; ++iClass) {
+          if (iEvent < startingIndexPerClass[iClass+1]) {
+            return iClass;
+          }
+        }
+        return nClasses -1;
+      }
+      inline bool EventIsSignal(unsigned int iEvent, unsigned int signalClassIndex) const { 
+        if (iEvent < startingIndexPerClass[signalClassIndex]) return false;
+        if (iEvent >= startingIndexPerClass[signalClassIndex] + nEventsPerClass[signalClassIndex]) return false;
+        return true;
+        }
+
+      inline unsigned int GetMaxEventsClass() const { return maxEvents; }
+      inline unsigned int GetMinEventsClass() const { return minEvents; } 
+
       inline unsigned int GetNEventsClass(unsigned int classIndex) const { return nEventsPerClass[classIndex]; } 
       inline unsigned int GetStartingIndexPerClass(unsigned int classIndex) const { return startingIndexPerClass[classIndex]; }
       
-      inline unsigned int GetNEventsClassVector() const { return nEventsPerClass; } 
-      inline unsigned int GetStartingIndexPerClassVector() const { return startingIndexPerClass; }
+      inline std::vector<unsigned int> GetNEventsClassVector() const { return nEventsPerClass; } 
+      inline std::vector<unsigned int> GetStartingIndexPerClassVector() const { return startingIndexPerClass; }
 
       inline unsigned int GetClassLastIndex(unsigned int classIndex) const { return startingIndexPerClass[classIndex] + nEventsPerClass[classIndex];}
 
     private:
       unsigned int nEvents; 
       unsigned int nClasses; 
+      unsigned int maxEvents;
+      unsigned int minEvents;
       std::vector<unsigned int> nEventsPerClass; 
       std::vector<unsigned int> startingIndexPerClass; 
 
@@ -668,7 +691,7 @@ namespace FastBDT {
   class CumulativeDistributions {
 
     public:
-      CumulativeDistributions(unsigned int iLayer, const EventSample& sample);
+      CumulativeDistributions(unsigned int iLayer, const EventSample& sample, const unsigned int signalClassIndex);
 
       inline const Weight& GetSignal(unsigned int iNode, unsigned int iFeature, unsigned int iBin) const { return signalCDFs[iNode*nBinSums[nFeatures] + nBinSums[iFeature] + iBin]; }
       inline const Weight& GetBckgrd(unsigned int iNode, unsigned int iFeature, unsigned int iBin) const { return bckgrdCDFs[iNode*nBinSums[nFeatures] + nBinSums[iFeature] + iBin]; }
@@ -686,7 +709,7 @@ namespace FastBDT {
        * @param firstEvent begin of the range used to calculated the CDFs
        * @param lastEvent  end of the range used to calculate the CDFs
        */
-      std::vector<Weight> CalculateCDFs(const EventSample &sample, const unsigned int firstEvent, const unsigned int lastEvent) const;
+      std::vector<Weight> CalculateCDFs(const EventSample &sample, const unsigned int signalClassIndex, const bool signalCDF) const;
 
     private:
       unsigned int nFeatures;
@@ -774,7 +797,7 @@ namespace FastBDT {
   class TreeBuilder {
 
     public:
-      TreeBuilder(unsigned int nLayers, EventSample &sample); 
+      TreeBuilder(unsigned int nLayers, EventSample &sample, unsigned int signalClassIndex); 
       void Print() const;
 
       const std::vector<Cut<unsigned int>>& GetCuts() const { return cuts; }
@@ -817,6 +840,7 @@ namespace FastBDT {
 
     private:
       unsigned int nLayers; /**< Number of layers in this tree */
+      unsigned int signalClassIndex; /**< which class is to be considered signal for this tree */
       std::vector<Cut<unsigned int>> cuts; /**< The best cut for every node in the tree excluding the leave nodes */
       std::vector<Node> nodes; /**< Information about every node in the tree including the leave nodes */
 
@@ -947,7 +971,7 @@ namespace FastBDT {
   class ForestBuilder {
 
     public:
-      ForestBuilder(EventSample &eventSample, unsigned int nTrees, double shrinkage, double randRatio, unsigned int nLayersPerTree, bool sPlot=false, double flatnessLoss=-1.0);
+      ForestBuilder(EventSample &eventSample, unsigned int nTrees, double shrinkage, double randRatio, unsigned int nLayersPerTree, bool sPlot=false, double flatnessLoss=-1.0, unsigned int nClasses);
       void print();
 
       const std::vector<Tree<unsigned int>>& GetForest() const { return forest; }
@@ -956,22 +980,26 @@ namespace FastBDT {
 
     private:
       void calculateBoostWeights(EventSample &eventSample);
-      void updateEventWeights(EventSample &eventSample);
-      void updateEventWeightsWithFlatnessPenalty(EventSample &eventSample);
+      void updateEventWeights(EventSample &eventSample, unsigned int signalClassIndex);
+      void updateEventWeightsWithFlatnessPenalty(EventSample &eventSample, unsigned int signalClassIndex);
       void prepareEventSample(EventSample &eventSample, double randRatio, bool sPlot);
 
     private:
       double shrinkage; /**< The config struct for this DecisionForest*/
       double flatnessLoss; /**< Flatness loss constant, if <=0 no flatness boost ist used */
       double F0; /** The initial F value. Which basically rewights signal and background events based on their initial proportion in the eventSample. */
+      unsigned int nClasses; /** The number of classes in the BDT */
       std::vector<Weight> sums; /**< Sum of the original weights for signal and background */
       std::vector<double> FCache; /**< Caches the F values for the training events, to spare some time.*/
       std::vector<Tree<unsigned int>> forest; /**< Contains all the trees trained by the stochastic gradient boost algorithm*/
-      std::vector<std::vector<double>> uniform_bin_weight_signal; /**< signal weight of each uniform bin */
-      std::vector<std::vector<double>> uniform_bin_weight_bckgrd; /**< background weight of each uniform bin */
       std::vector<std::vector<double>> weight_below_current_F_per_uniform_bin; /**< Weight below the current F value in each uniform bin */
+
+      std::vector<std::vector<std::vector<double>>> uniform_bin_weight_class; /**< per clas  weight of each uniform bin */
+      // std::vector<std::vector<ValueWithIndex<double>>> class_event_index_sorted_by_F; /**< The per class event indices sorted by F */
+
       std::vector<ValueWithIndex<double>> signal_event_index_sorted_by_F; /**< The signal event indices sorted by F */
       std::vector<ValueWithIndex<double>> bckgrd_event_index_sorted_by_F; /**< The background event indices sorted by F */
+
   };
 
   template<typename T>

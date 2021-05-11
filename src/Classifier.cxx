@@ -124,7 +124,7 @@ namespace FastBDT {
    
     m_featureBinning.resize(m_numberOfFeatures);
 
-    ForestBuilder df(eventSample, m_nTrees, m_shrinkage, m_subsample, m_depth, m_sPlot, m_flatnessLoss);
+    ForestBuilder df(eventSample, m_nTrees, m_shrinkage, m_subsample, m_depth, m_sPlot, m_flatnessLoss, m_nClasses);
     if(m_can_use_fast_forest) {
         Forest<float> temp_forest( df.GetShrinkage(), df.GetF0(), m_transform2probability);
         for( auto t : df.GetForest() ) {

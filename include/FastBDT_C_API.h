@@ -25,6 +25,8 @@ extern "C" {
     void SetDepth(void *ptr, unsigned int depth);
     unsigned int GetDepth(void *ptr);
     
+    unsigned int GetNClasses(void *ptr);
+
     void SetNumberOfFlatnessFeatures(void *ptr, unsigned int numberOfFlatnessFeatures);
     unsigned int GetNumberOfFlatnessFeatures(void *ptr);
     
@@ -49,7 +51,7 @@ extern "C" {
 
     void Load(void* ptr, char *weightfile);
 
-    // double* Predict(void *ptr, float *array);
+    void Predict(void *ptr, float *array, double *result);
 
     // void PredictArray(void *ptr, float *array, double *result, unsigned int nEvents);
 

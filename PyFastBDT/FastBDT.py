@@ -21,9 +21,9 @@ FastBDT_library.Save.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 FastBDT_library.Fit.argtypes = [ctypes.c_void_p, c_float_p, c_float_p, c_bool_p, ctypes.c_uint]
 
 FastBDT_library.Predict.argtypes = [ctypes.c_void_p, c_float_p]
-FastBDT_library.Predict.restype = ctypes.c_float
+FastBDT_library.Predict.restype = ctypes.c_double
 
-FastBDT_library.PredictArray.argtypes = [ctypes.c_void_p, c_float_p, c_float_p, ctypes.c_uint]
+#FastBDT_library.PredictArray.argtypes = [ctypes.c_void_p, c_float_p, c_double_p, ctypes.c_uint]
 
 FastBDT_library.SetSubsample.argtypes = [ctypes.c_void_p, ctypes.c_double]
 FastBDT_library.GetSubsample.argtypes = [ctypes.c_void_p]
@@ -40,6 +40,9 @@ FastBDT_library.GetFlatnessLoss.restypes = ctypes.c_double
 FastBDT_library.SetNTrees.argtypes = [ctypes.c_void_p, ctypes.c_uint]
 FastBDT_library.GetNTrees.argtypes = [ctypes.c_void_p]
 FastBDT_library.GetNTrees.restypes = ctypes.c_uint
+
+FastBDT_library.GetNClasses.argtypes = [ctypes.c_void_p]
+FastBDT_library.GetNClasses.restypes = ctypes.c_uint
 
 FastBDT_library.SetNumberOfFlatnessFeatures.argtypes = [ctypes.c_void_p, ctypes.c_uint]
 FastBDT_library.GetNumberOfFlatnessFeatures.argtypes = [ctypes.c_void_p]
@@ -136,7 +139,7 @@ class Classifier(object):
 
     def fit(self, X, y, weights=None):
         X_temp = np.require(X, dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
-        y_temp = np.require(y, dtype=np.bool, requirements=['A', 'W', 'C', 'O'])
+        y_temp = np.require(y, dtype=np.uint32, requirements=['A', 'W', 'C', 'O'])
         if weights is not None:
             w_temp = np.require(weights, dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
         numberOfEvents, numberOfFeatures = X_temp.shape
@@ -148,12 +151,31 @@ class Classifier(object):
     def predict(self, X):
         X_temp = np.require(X, dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
         N = len(X)
-        p = np.require(np.zeros(N), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
-        FastBDT_library.PredictArray(self.forest, X_temp.ctypes.data_as(c_float_p), p.ctypes.data_as(c_float_p), int(X_temp.shape[0]))
-        return p
+        nClasses = FastBDT_library.GetNClasses()
+        if nClasses == 2:
+             out = np.require(np.zeros(N), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
+             p = np.require(np.zeros(1), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
+        else: 
+             out = np.require(np.zeros(N, nClasses), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
+             p = np.require(np.zeros(nClasses), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
+
+        # FastBDT_library.PredictArray(self.forest, X_temp[row].ctypes.data_as(c_float_p), p.ctypes.data_as(c_double_p), int(X_temp.shape[0]))
+        for row in range(len(X_temp)):
+            FastBDT_library.Predict(self.forest, X_temp[row].ctypes.data_as(c_float_p), p.ctypes.data_as(c_double_p))
+            out[row] = p
+        return out
     
     def predict_single(self, row):
-        return FastBDT_library.Predict(self.forest, row.ctypes.data_as(c_float_p))
+        nClasses = FastBDT_library.GetNClasses()
+
+        # stupid workaraound - TODO fox
+        if nClasses == 2:
+             p = np.require(np.zeros(1), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
+        else: 
+             p = np.require(np.zeros(nClasses), dtype=np.float64, requirements=['A', 'W', 'C', 'O'])
+
+        FastBDT_library.Predict(self.forest, row.ctypes.data_as(c_float_p), p.ctypes.data_as(c_double_p))
+        return p
 
     def save(self, weightfile):
         FastBDT_library.Save(self.forest, bytes(weightfile, 'utf-8'))

@@ -44,7 +44,11 @@ extern "C" {
     unsigned int GetDepth(void *ptr) {
       return reinterpret_cast<Expertise*>(ptr)->classifier.GetDepth();
     }
-    
+
+    unsigned int GetNClasses(void *ptr) {
+      return reinterpret_cast<Expertise*>(ptr)->classifier.GetNClasses();
+    }
+
     void SetNumberOfFlatnessFeatures(void *ptr, unsigned int numberOfFlatnessFeatures) {
       reinterpret_cast<Expertise*>(ptr)->classifier.SetNumberOfFlatnessFeatures(numberOfFlatnessFeatures);
     }
@@ -132,17 +136,19 @@ extern "C" {
 
     // TODO - this seems wrong
 
-    // double *Predict(void *ptr, float *array) {
-    //   Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
-    //   return &(expertise->classifier.predict(std::vector<float>(array, array + expertise->classifier.GetNFeatures()))[0])[0];
-    // }
+    void Predict(void *ptr, float *array, double *result) {
+      Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
+      result = &(expertise->classifier.predict(std::vector<float>(array, array + expertise->classifier.GetNFeatures()))[0]);
+      return;
+    }
     
     // void PredictArray(void *ptr, float *array, double *result, unsigned int nEvents) {
     //   Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
     //   unsigned int nFeatures = expertise->classifier.GetNFeatures();
     //   for(unsigned int iEvent = 0; iEvent < nEvents; ++iEvent) {
-    //     result[iEvent] = &(expertise->classifier.predict(std::vector<float>(array + iEvent*nFeatures, array + (iEvent+1)*nFeatures)))[0];
+    //     result[iEvent] = &(expertise->classifier.predict(std::vector<float>(array + iEvent*nFeatures, array + (iEvent+1)*nFeatures))[0]);
     //   }
+    //   return;
     // }
 
     void Save(void* ptr, char *weightfile) {

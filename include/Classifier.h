@@ -73,7 +73,9 @@ class Classifier {
       
       double GetSubsample() const { return m_subsample; }
       void SetSubsample(double subsample) { m_subsample = subsample; }
-      
+
+      double GetNClasses() const { return m_nClasses; }
+
       bool GetSPlot() const { return m_sPlot; }
       void SetSPlot(bool sPlot) { m_sPlot = sPlot; }
       

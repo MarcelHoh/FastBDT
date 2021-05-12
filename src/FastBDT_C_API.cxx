@@ -138,7 +138,17 @@ extern "C" {
 
     void Predict(void *ptr, float *array, float *result) {
       Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
-      result = &(expertise->classifier.predict(std::vector<float>(array, array + expertise->classifier.GetNFeatures()))[0]);
+      
+      std::vector<float> prediction = expertise->classifier.predict(std::vector<float>(array, array + expertise->classifier.GetNFeatures()));
+      unsigned int nClasses = reinterpret_cast<Expertise*>(ptr)->classifier.GetNClasses();
+      if (nClasses == 0) {
+        result[0] = prediction[0];
+      } else {
+        for (unsigned int iClass = 0; iClass < nClasses; iClass++) {
+          result[iClass] = prediction[iClass];
+        }
+      }
+      // result = &(expertise->classifier.predict(std::vector<float>(array, array + expertise->classifier.GetNFeatures()))[0]);
       return;
     }
     

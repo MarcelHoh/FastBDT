@@ -156,7 +156,7 @@ class Classifier(object):
              out = np.require(np.zeros(N), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
              p   = np.require(np.zeros(1), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
         else: 
-             out = np.require(np.zeros(N, nClasses), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
+             out = np.require(np.zeros((N, nClasses)), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
              p   = np.require(np.zeros(nClasses), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
 
         # FastBDT_library.PredictArray(self.forest, X_temp[row].ctypes.data_as(c_float_p), p.ctypes.data_as(c_double_p), int(X_temp.shape[0]))

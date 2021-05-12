@@ -519,7 +519,10 @@ namespace FastBDT {
   class EventWeights {
 
     public:
-      EventWeights(unsigned int nEvents) : boost_weights(nEvents, 1), flatness_weights(nEvents, 0), original_weights(nEvents, 0) { }
+      EventWeights(unsigned int nEvents, unsigned int nClasses) : 
+      boost_weights(nEvents*nClasses, 1), 
+      flatness_weights(nEvents, 0), 
+      original_weights(nEvents, 0) { }
 
       inline Weight Get(unsigned int iEvent) const { return boost_weights[iEvent] * original_weights[iEvent]; }
       inline const Weight& GetBoostWeight(unsigned int iEvent) const { return boost_weights[iEvent]; }
@@ -623,7 +626,7 @@ namespace FastBDT {
        */
       EventSample(unsigned int nEvents, unsigned int nClasses, std::vector<unsigned int> startingIndexPerClass, unsigned int nFeatures, unsigned int nSpectators, const std::vector<unsigned int> &nLevels) : 
       nEvents(nEvents), nClasses(nClasses), startingIndexPerClass(startingIndexPerClass),
-      weights(nEvents), flags(nEvents), values(nEvents,nFeatures,nSpectators,nLevels) {
+      weights(nEvents, nClasses), flags(nEvents), values(nEvents,nFeatures,nSpectators,nLevels) {
 
         nEventsPerClass.resize(startingIndexPerClass.size());
         std::fill(nEventsPerClass.begin(), nEventsPerClass.end(), 0U);
@@ -675,17 +678,24 @@ namespace FastBDT {
       inline std::vector<unsigned int> GetNEventsClassVector() const { return nEventsPerClass; } 
       inline std::vector<unsigned int> GetStartingIndexPerClassVector() const { return startingIndexPerClass; }
 
-      inline unsigned int GetClassLastIndex(unsigned int classIndex) const { return startingIndexPerClass[classIndex] + nEventsPerClass[classIndex];}
+      inline unsigned int GetClassLastIndex(unsigned int classIndex) const { 
+        if (classIndex < nClasses - 2) {
+          return startingIndexPerClass[classIndex+1];
+        }
+        else { 
+          return nEvents;
+        }
+        }
 
     private:
       unsigned int nEvents; 
-      unsigned int nClasses; 
+      unsigned int nClasses; // ORDERING
       unsigned int maxEvents;
       unsigned int minEvents;
       std::vector<unsigned int> nEventsPerClass; 
       std::vector<unsigned int> startingIndexPerClass; 
 
-      EventWeights weights;
+      EventWeights weights; //ORDERING
       EventFlags flags;
       EventValues values;
 
@@ -834,6 +844,7 @@ namespace FastBDT {
        * will always return NAN. Therefore this method indicates if we can still use this tree or not
        * */
       bool IsValid() const {
+        std::cout << nodes[0].GetBoostWeight() << std::endl;
         return cuts[0].valid and std::isfinite(nodes[0].GetBoostWeight());
       }
 
@@ -984,7 +995,7 @@ namespace FastBDT {
 
     private:
       void calculateBoostWeights(EventSample &eventSample);
-      void updateEventWeights(EventSample &eventSample, unsigned int signalClassIndex);
+      void updateEventWeights(EventSample &eventSample, unsigned int signalClassIndex, bool lastTree);
       void updateEventWeightsWithFlatnessPenalty(EventSample &eventSample, unsigned int signalClassIndex);
       void prepareEventSample(EventSample &eventSample, double randRatio, bool sPlot);
 
@@ -1108,10 +1119,6 @@ namespace FastBDT {
           float expSum = std::accumulate(fvals.begin(), fvals.end(), 0.0);
           std::vector<float> pvals(fvals.size(), 0.0);
           std::transform(fvals.begin(), fvals.end(), pvals.begin(), [&expSum](double f){return f / expSum;});
-          for (unsigned int i = 0; i < pvals.size(); i++) {
-            std::cout << pvals[i] << " ";
-          }
-          std::cout << std::endl;
           return pvals;
       }
 

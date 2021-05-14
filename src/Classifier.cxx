@@ -137,7 +137,7 @@ namespace FastBDT {
         bins[bin] = m_featureBinning[iFeature + m_numberOfFeatures].ValueToBin(X[iFeature + m_numberOfFeatures][iEvent]);
         bin++;
       }
-      eventSample.AddEvent(bins, w[iEvent], yClass[iEvent] == 1);
+      eventSample.AddEvent(bins, w[iEvent], yClass[iEvent]);
     }
    
     m_featureBinning.resize(m_numberOfFeatures);

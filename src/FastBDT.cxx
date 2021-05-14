@@ -24,9 +24,6 @@ namespace FastBDT {
         sums[nClasses] += boost_weights[nClasses*i + classIndex]*boost_weights[nClasses*i + classIndex] * original_weights[i];
       }
     }
-    for (unsigned int i = 0; i < sums.size(); ++i) {
-      std::cout << "Sums: " << i << "  " << sums[i] << std::endl;
-    }
     return sums;
   }
 
@@ -139,31 +136,34 @@ namespace FastBDT {
     const auto &weights = sample.GetWeights();
     const unsigned int nClasses = sample.GetNClasses();
 
+    unsigned int mult = nClasses;
+    if (nClasses==2) mult = 1;
+
     std::vector<Weight> bins( nNodes*nBinSums[nFeatures] );
 
     //TODO - reduce code duplication
     // Fill Cut-PDFs for all nodes in this layer and for every feature
     if (signalCDF) {
-      for(unsigned int iEvent = sample.GetStartingIndexPerClass(signalClassIndex); iEvent < sample.GetStartingIndexPerClass(signalClassIndex) + sample.GetNEventsClass(signalClassIndex); ++iEvent) {
+      for(unsigned int iEvent = sample.GetStartingIndexPerClass(signalClassIndex); iEvent < sample.GetClassLastIndex(signalClassIndex); ++iEvent) {
         if( flags.Get(iEvent) < static_cast<int>(nNodes) )
           continue;
         const unsigned int index = (flags.Get(iEvent)-nNodes)*nBinSums[nFeatures];
         for(unsigned int iFeature = 0; iFeature < nFeatures; ++iFeature ) {
           const unsigned int subindex = nBinSums[iFeature] + values.Get(iEvent,iFeature);
-          bins[index+subindex] += weights.GetOriginalWeight(iEvent) * (weights.GetBoostWeight(nClasses*iEvent+signalClassIndex) + weights.GetFlatnessWeight(iEvent));
+          bins[index+subindex] += weights.GetOriginalWeight(iEvent) * (weights.GetBoostWeight(mult*iEvent+signalClassIndex) + weights.GetFlatnessWeight(iEvent));
         }
       }
       // everything not signal is background
     } else {
-      for (unsigned int iClass =0; iClass < sample.GetNClasses(); ++iClass) {
+      for (unsigned int iClass = 0; iClass < sample.GetNClasses(); ++iClass) {
         if (iClass == signalClassIndex) continue;
-        for(unsigned int iEvent = sample.GetStartingIndexPerClass(iClass); iEvent < sample.GetStartingIndexPerClass(iClass) + sample.GetNEventsClass(iClass); ++iEvent) {
+        for(unsigned int iEvent = sample.GetStartingIndexPerClass(iClass); iEvent < sample.GetClassLastIndex(iClass); ++iEvent) {
           if( flags.Get(iEvent) < static_cast<int>(nNodes) )
             continue;
           const unsigned int index = (flags.Get(iEvent)-nNodes)*nBinSums[nFeatures];
           for(unsigned int iFeature = 0; iFeature < nFeatures; ++iFeature ) {
             const unsigned int subindex = nBinSums[iFeature] + values.Get(iEvent,iFeature);
-            bins[index+subindex] += weights.GetOriginalWeight(iEvent) * (weights.GetBoostWeight(nClasses*iEvent+signalClassIndex) + weights.GetFlatnessWeight(iEvent));
+            bins[index+subindex] += weights.GetOriginalWeight(iEvent) * (weights.GetBoostWeight(mult*iEvent+signalClassIndex) + weights.GetFlatnessWeight(iEvent));
           }
         }
       }
@@ -301,7 +301,6 @@ namespace FastBDT {
     // number of signal and background in the sample.
     const auto sums = sample.GetWeights().GetSumsAssumingSignalClass(signalClassIndex, sample.GetNEventsClassVector(), sample.GetStartingIndexPerClassVector());
     nodes[0].SetWeights(sums);
-    std::cout << sums[0] << "  " << sums[1] << "  " << sums[2] << std::endl;
 
     // The training of the tree is done level by level. So we iterate over the levels of the tree
     // and create histograms for signal and background events for different cuts, nodes and features.
@@ -358,19 +357,23 @@ namespace FastBDT {
     const auto &flags = sample.GetFlags();
     const unsigned int nClasses = sample.GetNClasses();
 
+    unsigned int mult = nClasses;
+    if (nClasses == 2) mult = 1; 
+    // in case of 2 classes signalClassIndex = 0
+    // in all cases the signalClassIndex refers to the class that is considered signal for the given tree
 
     for(unsigned int iEvent = sample.GetStartingIndexPerClass(signalClassIndex); iEvent < sample.GetClassLastIndex(signalClassIndex); ++iEvent) {
       const int flag = flags.Get(iEvent);
       if( flag >= static_cast<int>(nNodes) ) {
-        nodes[flag-1].AddSignalWeight( weights.GetBoostWeight(nClasses*iEvent+signalClassIndex), weights.GetOriginalWeight(iEvent) );
+        nodes[flag-1].AddSignalWeight( weights.GetBoostWeight(mult*iEvent+signalClassIndex), weights.GetOriginalWeight(iEvent) );
       }
     }
     for (unsigned int iClass=0; iClass < nClasses; ++iClass) {
       if (iClass == signalClassIndex) continue;
-      for(unsigned int iEvent = sample.GetStartingIndexPerClass(iClass); iEvent < sample.GetClassLastIndex(iClass); ++iEvent) {
+      for (unsigned int iEvent = sample.GetStartingIndexPerClass(iClass); iEvent < sample.GetClassLastIndex(iClass); ++iEvent) {
         const int flag = flags.Get(iEvent);
         if( flag >= static_cast<int>(nNodes) ) {
-          nodes[flag-1].AddBckgrdWeight( weights.GetBoostWeight(nClasses*iEvent+signalClassIndex), weights.GetOriginalWeight(iEvent) );
+          nodes[flag-1].AddBckgrdWeight( weights.GetBoostWeight(mult*iEvent+signalClassIndex), weights.GetOriginalWeight(iEvent) );
         }
       }
     }
@@ -481,17 +484,17 @@ namespace FastBDT {
     unsigned int totalTrees = nTrees;
     if (nClasses != 2) totalTrees = nClasses * nTrees;
     unsigned int signalClassIndex = 0;
-    bool lastTreeOfRound = true;
+    bool updateMulticlassBoostWeights = true;
 
     for(unsigned int iTree = 0; iTree < totalTrees; ++iTree) {
 
       if (nClasses != 2) {
         signalClassIndex = iTree % nClasses;
-        lastTreeOfRound  = signalClassIndex == nClasses-1;
+        updateMulticlassBoostWeights  = ((signalClassIndex == 0) and (iTree>0));
       }
 
       // Update the event weights according to their F value
-      updateEventWeights(sample, signalClassIndex, lastTreeOfRound);
+      updateEventWeights(sample, signalClassIndex, updateMulticlassBoostWeights);
 
       // Add flatness loss terms
       if(flatnessLoss > 0 and iTree > 0) 
@@ -520,7 +523,7 @@ namespace FastBDT {
     // If smaller set the flag to 1. This is important! If the flags are != 1, the DecisionTree algorithm will fail.
     const unsigned int nEvents = sample.GetNEvents();
     auto &flags = sample.GetFlags();
-    if( randRatio < 1.0 and sPlot) {
+    if( randRatio < 1.0 and sPlot) { // only supported for 2 classes
       // For an sPlot Training it is important to take always signal and background pairs together into the training!
       for(unsigned int iEvent = 0; iEvent < nEvents / 2 + 1; ++iEvent) {
         int use = (static_cast<float>(rand())/static_cast<float>(RAND_MAX) > randRatio ) ? 0 : 1;
@@ -537,7 +540,7 @@ namespace FastBDT {
     }
   }
 
-  void ForestBuilder::updateEventWeights(EventSample &eventSample, unsigned int signalClassIndex, bool lastTree) {
+  void ForestBuilder::updateEventWeights(EventSample &eventSample, unsigned int signalClassIndex, bool updateMulticlassBoostWeights) {
 
     const unsigned int nEvents = eventSample.GetNEvents();
 
@@ -557,7 +560,7 @@ namespace FastBDT {
     }
 
     if (forest.size() > minForestSize) {
-      unsigned int treeTargetClass = forest.size() % nClasses;  
+      unsigned int treeTargetClass = (forest.size()) % nClasses;  
       for(unsigned int iEvent = 0; iEvent < nEvents; ++iEvent) {
         unsigned int iFCache;
         if (nClasses == 2) {
@@ -570,21 +573,19 @@ namespace FastBDT {
         } else {
           FCache[iFCache] += shrinkage*forest.back().GetBoostWeight( forest.back().ValueToNode(&values.Get(iEvent)) );
         }
-        std::cout << iEvent << "  " << eventSample.EventIndexToClassIndex(iEvent) << "  " << iFCache << "  " <<  FCache[iFCache] << " Values: " <<  &values.Get(iEvent) << " Flag: " << flags.Get(iEvent) << std::endl;
       }
     }
 
     if (nClasses == 2) {
       for(unsigned int iEvent = 0; iEvent < nEvents; ++iEvent) {
         if (eventSample.EventIndexToClassIndex(iEvent) == signalClassIndex) {
-          weights.SetBoostWeight(nClasses*iEvent+signalClassIndex, 2.0/(1.0+std::exp(2.0*FCache[iEvent])));
+          weights.SetBoostWeight(iEvent, 2.0/(1.0+std::exp(2.0*FCache[iEvent])));
         } else {
-          weights.SetBoostWeight(nClasses*iEvent+signalClassIndex, 2.0/(1.0+std::exp(-2.0*FCache[iEvent])));
+          weights.SetBoostWeight(iEvent, 2.0/(1.0+std::exp(-2.0*FCache[iEvent])));
         }
       }
     // only update the boostweight after a full round of trees
-    } else if (lastTree){
-      std::cout << " TEST " << std::endl;
+    } else if (updateMulticlassBoostWeights){
       for(unsigned int iEvent = 0; iEvent < nEvents; ++iEvent) {
         std::vector<float> F(FCache.begin() + nClasses*iEvent, FCache.begin() + nClasses*(iEvent+1));
         std::transform(F.begin(), F.end(), F.begin(), [](float d){return std::exp(d);});
@@ -594,7 +595,7 @@ namespace FastBDT {
         F[eventSample.EventIndexToClassIndex(iEvent)] = 1 - F[eventSample.EventIndexToClassIndex(iEvent)];
 
         for (unsigned int iClass = 0; iClass < nClasses; ++iClass) {
-          weights.SetBoostWeight(nClasses*iEvent+iClass, (eventSample.EventIndexToClassIndex(iEvent) == iClass) ? 1-F[iClass] : -F[iClass]); 
+          weights.SetBoostWeight(nClasses*iEvent+iClass, (eventSample.EventIndexToClassIndex(iEvent) == iClass) ? 1-F[iClass] : F[iClass]); 
         }
       }
     }

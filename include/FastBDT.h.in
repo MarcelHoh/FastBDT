@@ -679,7 +679,7 @@ namespace FastBDT {
       inline std::vector<unsigned int> GetStartingIndexPerClassVector() const { return startingIndexPerClass; }
 
       inline unsigned int GetClassLastIndex(unsigned int classIndex) const { 
-        if (classIndex < nClasses - 2) {
+        if (classIndex < nClasses - 1) {
           return startingIndexPerClass[classIndex+1];
         }
         else { 
@@ -844,7 +844,6 @@ namespace FastBDT {
        * will always return NAN. Therefore this method indicates if we can still use this tree or not
        * */
       bool IsValid() const {
-        std::cout << nodes[0].GetBoostWeight() << std::endl;
         return cuts[0].valid and std::isfinite(nodes[0].GetBoostWeight());
       }
 
@@ -995,7 +994,7 @@ namespace FastBDT {
 
     private:
       void calculateBoostWeights(EventSample &eventSample);
-      void updateEventWeights(EventSample &eventSample, unsigned int signalClassIndex, bool lastTree);
+      void updateEventWeights(EventSample &eventSample, unsigned int signalClassIndex, bool updateMulticlassBoostWeights);
       void updateEventWeightsWithFlatnessPenalty(EventSample &eventSample, unsigned int signalClassIndex);
       void prepareEventSample(EventSample &eventSample, double randRatio, bool sPlot);
 

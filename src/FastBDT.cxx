@@ -605,7 +605,7 @@ namespace FastBDT {
     // TODO - Update this for multiclass
     // currently assumes signal class = 0, background = 1
 
-    const unsigned int nEvents = eventSample.GetNEvents();
+    // const unsigned int nEvents = eventSample.GetNEvents();
 
     const auto &values = eventSample.GetValues();
     auto &weights = eventSample.GetWeights();

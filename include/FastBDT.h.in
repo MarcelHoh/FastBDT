@@ -1065,7 +1065,7 @@ namespace FastBDT {
           if(not transform2probability)
               return std::vector<float> {GetF(values)};
           // Calculate signal probability out of the F value
-          return std::vector<float> {1.0/(1.0+std::exp(-2*GetF(values)))};
+          return std::vector<float> {static_cast<float>(1.0/(1.0+std::exp(-2*GetF(values))))};
 
       }
       

@@ -53,7 +53,7 @@ extern "C" {
 
     void Predict(void *ptr, float *array, float *result);
 
-    // void PredictArray(void *ptr, float *array, float *result, unsigned int nEvents);
+    void PredictArray(void *ptr, float *array, float *result, unsigned int nEvents);
 
     void Save(void* ptr, char *weightfile);
     

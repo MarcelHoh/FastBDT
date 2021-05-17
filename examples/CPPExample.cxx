@@ -47,6 +47,7 @@ float GetIrisScore(const FastBDT::Classifier &classifier) {
       //sum += (1-static_cast<int>(y[i])-p)*(1-static_cast<int>(y[i])-p);
     }
     return sum;
+
 }
 
 int main() {

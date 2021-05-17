@@ -135,13 +135,12 @@ extern "C" {
     }
 
     // TODO - this seems wrong
-
     void Predict(void *ptr, float *array, float *result) {
       Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
       
       std::vector<float> prediction = expertise->classifier.predict(std::vector<float>(array, array + expertise->classifier.GetNFeatures()));
       unsigned int nClasses = reinterpret_cast<Expertise*>(ptr)->classifier.GetNClasses();
-      if (nClasses == 0) {
+      if (nClasses == 2) {
         result[0] = prediction[0];
       } else {
         for (unsigned int iClass = 0; iClass < nClasses; iClass++) {
@@ -152,14 +151,26 @@ extern "C" {
       return;
     }
     
-    // void PredictArray(void *ptr, float *array, double *result, unsigned int nEvents) {
-    //   Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
-    //   unsigned int nFeatures = expertise->classifier.GetNFeatures();
-    //   for(unsigned int iEvent = 0; iEvent < nEvents; ++iEvent) {
-    //     result[iEvent] = &(expertise->classifier.predict(std::vector<float>(array + iEvent*nFeatures, array + (iEvent+1)*nFeatures))[0]);
-    //   }
-    //   return;
-    // }
+    void PredictArray(void *ptr, float *array, float *result, unsigned int nEvents) {
+      Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
+
+      unsigned int nFeatures = expertise->classifier.GetNFeatures();
+      unsigned int nClasses = expertise->classifier.GetNClasses();
+      bool singleClass = nClasses == 2;
+
+      for(unsigned int iEvent = 0; iEvent < nEvents; ++iEvent) {
+        std::vector<float> prediction = expertise->classifier.predict(std::vector<float>(array + iEvent*nFeatures, array + (iEvent+1)*nFeatures));
+
+        if (singleClass) {
+          result[iEvent] = prediction[0];
+        } else {
+          for (unsigned int iClass = 0; iClass < nClasses; iClass++) {
+            result[iEvent*nClasses+iClass] = prediction[iClass];
+          }
+        }
+      }
+      return;
+    }
 
     void Save(void* ptr, char *weightfile) {
       Expertise *expertise = reinterpret_cast<Expertise*>(ptr);

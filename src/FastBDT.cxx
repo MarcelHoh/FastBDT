@@ -408,7 +408,6 @@ namespace FastBDT {
     auto &weights = sample.GetWeights();
     sums = weights.GetSums(sample.GetNEventsClassVector(), sample.GetStartingIndexPerClassVector()); 
 
-    //skip the reweighting for multiclass (TODO revisit this)
     if (nClasses==2) {
       // assumes signal class = 0, background class = 1
 
@@ -424,7 +423,18 @@ namespace FastBDT {
           for(unsigned int iEvent = sample.GetStartingIndexPerClass(1); iEvent < sample.GetClassLastIndex(1); ++iEvent)
             weights.SetOriginalWeight(iEvent, 2.0 * sums[0] / (sums[0] + sums[1]) * weights.GetOriginalWeight(iEvent));
       }
-    }    
+    } else {
+      // reweight all classes to the same total weight (1/nClasses of the sums)
+      // for multiclass the first N entries in sums are the weight of each class
+      float target_weight = std::accumulate(sums.begin(), sums.end()-1, 0.0) / nClasses;
+      for (unsigned int iClass = 0; iClass < nClasses; ++iClass) {
+        for (unsigned int iEvent = sample.GetStartingIndexPerClass(iClass); iEvent < sample.GetClassLastIndex(iClass); ++iEvent) {
+          weights.SetOriginalWeight(iEvent, target_weight / sums[iClass] * weights.GetOriginalWeight(iEvent));
+        }
+      }
+    } 
+
+
     // Resize the FCache to the number of events, and initalise it with the inital 0.0 value
     // Not F0 because F0 is already used in the original_weights
      

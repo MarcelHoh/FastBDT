@@ -21,7 +21,6 @@ FastBDT_library.Save.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 FastBDT_library.Fit.argtypes = [ctypes.c_void_p, c_float_p, c_float_p, c_bool_p, ctypes.c_uint]
 
 FastBDT_library.Predict.argtypes = [ctypes.c_void_p, c_float_p]
-# FastBDT_library.Predict.restype = ctypes.c_float_p
 
 FastBDT_library.PredictArray.argtypes = [ctypes.c_void_p, c_float_p, c_float_p, ctypes.c_uint]
 
@@ -153,17 +152,11 @@ class Classifier(object):
         N = len(X)
         nClasses = FastBDT_library.GetNClasses(self.forest)
         if nClasses == 2:
-             print('TEST 2 CLASSES')
              out = np.require(np.zeros(N), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
-             p   = np.require(np.zeros(1), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
         else: 
              out = np.require(np.zeros((N, nClasses)), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
-             p   = np.require(np.zeros(nClasses), dtype=np.float32, requirements=['A', 'W', 'C', 'O'])
 
         FastBDT_library.PredictArray(self.forest, X_temp.ctypes.data_as(c_float_p), out.ctypes.data_as(c_float_p), int(X_temp.shape[0]))
-        # for row in range(len(X_temp)):
-        #     FastBDT_library.Predict(self.forest, X_temp[row].ctypes.data_as(c_float_p), p.ctypes.data_as(c_float_p))
-        #     out[row] = p
         return out
     
     def predict_single(self, row):

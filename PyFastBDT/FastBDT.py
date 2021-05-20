@@ -62,6 +62,8 @@ FastBDT_library.SetSPlot.argtypes = [ctypes.c_void_p, ctypes.c_bool]
 FastBDT_library.GetSPlot.argtypes = [ctypes.c_void_p]
 FastBDT_library.GetSPlot.restypes = ctypes.c_bool
 
+FastBDT_library.GetClassLabels.argtypes = [ctypes.c_void_p, c_uint_p]
+
 
 FastBDT_library.GetVariableRanking.argtypes = [ctypes.c_void_p]
 FastBDT_library.GetVariableRanking.restype = ctypes.c_void_p
@@ -172,8 +174,14 @@ class Classifier(object):
         FastBDT_library.Predict(self.forest, row_temp.ctypes.data_as(c_float_p), p.ctypes.data_as(c_float_p))
         return p
 
-    def GetNClasses(self):
+    def get_nClasses(self):
         return FastBDT_library.GetNClasses(self.forest)
+
+    def get_classLabels(self):
+        nClasses = FastBDT_library.GetNClasses(self.forest)
+        labels = np.require(np.zeros(nClasses), dtype=np.uint32, requirements=['A', 'W', 'C', 'O'])
+        FastBDT_library.GetClassLabels(self.forest, labels.ctypes.data_as(c_uint_p))
+        return labels
 
     def save(self, weightfile):
         FastBDT_library.Save(self.forest, bytes(weightfile, 'utf-8'))

@@ -58,7 +58,6 @@ namespace FastBDT {
     // derive the number of classes
     std::unordered_set<unsigned int> yHashMap;
     std::map<unsigned int, unsigned int> classLabelToIndex;
-    std::map<unsigned int, unsigned int> classIndexToLabel;
 
     // O(n)
     m_nClasses = 0; // use as counter and to then store the total number of classes
@@ -69,7 +68,7 @@ namespace FastBDT {
       if (yHashMap.find(y[iY]) == yHashMap.end()) {
         yHashMap.insert(y[iY]);
         classLabelToIndex[y[iY]] = m_nClasses;
-        classIndexToLabel[m_nClasses] = y[iY];
+        m_classIndexToLabel.push_back(y[iY]);
         nEventsPerClass.push_back(1);
         m_nClasses++;
       }
@@ -77,6 +76,35 @@ namespace FastBDT {
         nEventsPerClass[classLabelToIndex[y[iY]]]++;
       }
       yClass[iY] = classLabelToIndex[y[iY]];
+    }
+
+    // For two class BDT maintain the behaviour that class with label = 1 is the signal class
+    // From here on we assume the signal class has index = 0. If this does not agree with the label we need to update a few things
+    if (m_nClasses==2) {
+      if (m_classIndexToLabel[0] != 1) {
+        if (m_classIndexToLabel[1] == 1) {
+          // need to switch index 0 and 1 for everything
+          // this is slow. Could be avoided by asking the user to provide how many classes there will be - might also be safer.
+          unsigned int nEvents0 = nEventsPerClass[0];
+          nEventsPerClass[0] = nEventsPerClass[1];
+          nEventsPerClass[1] = nEvents0;
+
+          unsigned int classLabel0 = m_classIndexToLabel[0];
+          m_classIndexToLabel[0] = m_classIndexToLabel[1];
+          m_classIndexToLabel[1] = classLabel0;
+
+          classLabelToIndex[m_classIndexToLabel[0]] = 0;
+          classLabelToIndex[m_classIndexToLabel[1]] = 1;
+
+          // reset the class array
+          for (unsigned int iY = 0; iY < y.size(); ++iY) {
+                  yClass[iY] = classLabelToIndex[y[iY]];
+          }
+        }
+          // if this is not the case neither class has a 1 label.
+          // Keep the labels in the order we found them.
+          // The user can check the order of the labels to check what is considered the signal class
+      } 
     }
 
     std::vector<unsigned int> startingIndexPerClass(nEventsPerClass.size()+1, 0);
@@ -266,6 +294,7 @@ std::ostream& operator<<(std::ostream& stream, const Classifier& classifier) {
     stream << classifier.m_nTrees << std::endl;
     stream << classifier.m_depth << std::endl;
     stream << classifier.m_nClasses << std::endl;
+    stream << classifier.m_classIndexToLabel << std::endl;
     stream << classifier.m_binning << std::endl;
     stream << classifier.m_shrinkage << std::endl;
     stream << classifier.m_subsample << std::endl;

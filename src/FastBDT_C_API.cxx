@@ -170,6 +170,15 @@ extern "C" {
       return;
     }
 
+    void GetClassLabels(void* ptr, unsigned int *labels) {
+      Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
+      unsigned int nClasses = expertise->classifier.GetNClasses();
+      for (unsigned int iClass; iClass < nClasses; iClass++) {
+        labels[iClass] = expertise->classifier.GetClassLabel(iClass);
+      }
+    }
+
+
     void Save(void* ptr, char *weightfile) {
       Expertise *expertise = reinterpret_cast<Expertise*>(ptr);
 

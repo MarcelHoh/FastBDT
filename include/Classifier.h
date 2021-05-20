@@ -29,6 +29,7 @@ class Classifier {
         stream >> m_nTrees;
         stream >> m_depth;
         stream >> m_nClasses;
+        stream >> m_classIndexToLabel;
         stream >> m_binning;
         stream >> m_shrinkage;
         stream >> m_subsample;
@@ -91,7 +92,9 @@ class Classifier {
 
       double GetFlatnessLoss() const { return m_flatnessLoss; }
       void SetFlatnessLoss(double flatnessLoss) { m_flatnessLoss = flatnessLoss; }
-			
+
+      unsigned int GetClassLabel(unsigned int iClass) { return m_classIndexToLabel[iClass];}
+
       void fit(const std::vector<std::vector<float>> &X, const std::vector<unsigned int> &y, const std::vector<Weight> &w);
 
       std::vector<float> predict(const std::vector<float> &X) const;
@@ -122,6 +125,8 @@ class Classifier {
     std::vector<PurityTransformation> m_purityBinning;
 
     unsigned int m_nClasses = 0;
+    std::vector<unsigned int> m_classIndexToLabel;
+
 
     bool m_can_use_fast_forest = true;
     Forest<float> m_fast_forest;

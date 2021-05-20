@@ -62,6 +62,8 @@ extern "C" {
     }; 
 
     void* GetVariableRanking(void* ptr);
+
+    void GetClassLabels(void* ptr, unsigned int *labels);
     
     void* GetIndividualVariableRanking(void* ptr, float *array);
     

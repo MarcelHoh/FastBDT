@@ -4,11 +4,11 @@
 # I didn't used this in the paper
 
 import sys
-sys.path.append('../FastBDT/python')
-sys.path.append('../xgboost/python')
+#sys.path.append('../FastBDT/python')
+#sys.path.append('../xgboost/python')
 import numpy as np
 from sklearn.ensemble import GradientBoostingClassifier
-import FastBDT
+from PyFastBDT import FastBDT
 import pickle
 import scipy.sparse
 import xgboost as xgb
